@@ -1,0 +1,65 @@
+import smtplib
+from email.message import EmailMessage
+from gpiozero import Button
+from datetime import datetime
+import schedule
+import time
+
+FROM_EMAIL = "2529607397@qq.com"
+FROM_PASSWORD = "sjovbfnwozyaebdj"
+TO_EMAIL = "2529607397@qq.com"
+SMTP_SERVER = "smtp.qq.com"
+SMTP_PORT = 465
+
+MOISTURE_PIN = 17
+sensor = Button(MOISTURE_PIN, pull_up=True, bounce_time=0.2)
+water_needed = not sensor.is_pressed
+
+def on_water_detected():
+    global water_needed
+    water_needed = False
+    print("Water detected: Plant does NOT need watering.")
+
+def on_no_water():
+    global water_needed
+    water_needed = True
+    print("No water detected: Plant NEEDS watering.")
+
+sensor.when_pressed = on_water_detected
+sensor.when_released = on_no_water
+
+def send_email():
+    try:
+        msg = EmailMessage()
+        status = "NEEDS WATERING" if water_needed else "DOES NOT need water"
+        body = f"Plant Status Update ({datetime.now().strftime('%Y-%m-%d %H:%M')}):\n\n"
+        body += f"The plant {status}.\n\n"
+        body += "Sensor reading: " + ("DRY" if water_needed else "WET")
+        
+        msg.set_content(body)
+        msg['From'] = FROM_EMAIL
+        msg['To'] = TO_EMAIL
+        msg['Subject'] = f"Plant Status: {status}"
+
+        with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
+            server.login(FROM_EMAIL, FROM_PASSWORD)
+            server.send_message(msg)
+        
+        print(f"Email sent at {datetime.now().strftime('%H:%M')} - Status: {status}")
+    
+    except Exception as e:
+        print(f"Failed to send email: {str(e)}")
+
+send_times = ["07:00", "10:00", "13:00", "16:00"]
+for t in send_times:
+    schedule.every().day.at(t).do(send_email)
+    print(f"Scheduled email at {t} every day.")
+
+print("Plant Moisture Monitoring System is running...")
+
+try:
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
+except KeyboardInterrupt:
+    print("Program manually terminated.")
