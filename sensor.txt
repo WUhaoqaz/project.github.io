@@ -1,0 +1,16 @@
+MOISTURE_PIN = 17
+sensor = Button(MOISTURE_PIN, pull_up=True, bounce_time=0.2)
+water_needed = not sensor.is_pressed
+
+def on_water_detected():
+    global water_needed
+    water_needed = False
+    print("Water detected: Plant does NOT need watering.")
+
+def on_no_water():
+    global water_needed
+    water_needed = True
+    print("No water detected: Plant NEEDS watering.")
+
+sensor.when_pressed = on_water_detected
+sensor.when_released = on_no_water
